@@ -1,0 +1,8 @@
+{
+    "repeat": 100,
+    "platform": "onos",
+    "release": "1.8",
+    "apps": "fwd,openflow",
+    "waiting": 15,
+    "workflow": ""
+}
