@@ -141,8 +141,9 @@ class TestSuite():
             'remove': True,
             'tty': True
         }
-        net_workflow_command = os.path.join('/data', self.net_workflow)
-        workflow_output = self.docker.containers.run(controller_ip,
+        net_workflow_command = '%s %s' % (os.path.join('/data', self.net_workflow),
+                                          controller_ip)
+        workflow_output = self.docker.containers.run(mininet_image,
                                                      command=net_workflow_command,
                                                      **opts)
         self.outputcnt += 1
