@@ -1,0 +1,115 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import json
+from logging import Logger
+from optparse import OptionParser
+
+from sdntest.suite import TestSuite
+
+LEVELS = { 'debug': logging.DEBUG,
+           'info': logging.INFO,
+           'output': OUTPUT,
+           'warning': logging.WARNING,
+           'error': logging.ERROR,
+           'critical': logging.CRITICAL }
+
+def cleanup():
+    # TODO: no implementation currently
+    pass
+
+class TestRunner(object):
+
+    def __init__(self):
+        """
+        Init a test runner.
+        """
+        self.options = None
+        self.args = None
+
+        self.parseArgs()
+        self.setup()
+        self.begin()
+
+    def parseArgs(self):
+        """
+        Parse command-line args and return options object.
+
+        returns: opts parse options dict
+        """
+
+        desc = ("The %prog utility start experiments for general SDN testcases\n"
+                "from the command line. Users can define their own testcases\n"
+                "configuration and invoke test framework to repeatedly execute them.")
+
+        usage = ("%prog [options]\n"
+                 "(type %prog -h for details)")
+
+        opts = OptionParser(description=desc, usage=usage)
+        opts.add_option('--config', '-c', type='string',
+                        help="set testcase configuration file",
+                        metavar="FILE")
+        opts.add_options('--verbosity', '-v', type='choice',
+                         choices=LEVELS.keys(), default='info',
+                         help='|'.join(LEVELS.keys()))
+
+        self.options, self.args = opts.parse_args()
+
+        if self.args:
+            opts.print_help()
+            exit()
+
+    def setup(self):
+        """
+        Setup and validate environment.
+        """
+
+        # set logging verbosity
+        if LEVELS[self.options.verbosity] > LEVELS['output']:
+            Logger.warn('*** WARNING: selected verbosity level (%s) will hide CLI '
+                        'output!\n'
+                        'Please restart Mininet with -v [debug, info, output].\n'
+                        % self.options.verbosity)
+        Logger.setLevel(LEVELS[self.options.verbosity])
+
+    def begin(self):
+        """
+        Start the testcase.
+        """
+
+        configfile = 'config.json'
+
+        if opts.config:
+            configfile = opts.config
+
+        with open(configfile) as f:
+            configs = json.load(f)
+
+        if 'workspace' in configs.keys():
+            workspace = configs['workspace']
+        else:
+            workspace = os.path.dirname(configfile)
+
+        workspace = os.path.realpath(workspace)
+        os.chdir(workspace)
+        configs['workspace'] = workspace
+        TestSuite(configs)
+
+if "__main__" == __name__:
+    try:
+        TestRunner()
+    except KeyboardInterrupt:
+        Logger.info("\n\nKeyboard Interrupt. Cleaning up and existing...\n\n")
+        cleanup()
+    except Exception:
+        type_, val_, trace_ = sys.exc_info()
+        errorMsg = ("-"*80 + "\n" +
+                    "Caught exception. Exiting test...\n\n" +
+                    "%s: %s\n" % (type_.__name__, val_) +
+                    "-"*80 + "\n")
+        Logger.error(errorMsg)
+        import traceback
+        stackTrace = traceback.format_exc()
+        Logger.debug(stackTrace + "\n")
+        cleanup()
