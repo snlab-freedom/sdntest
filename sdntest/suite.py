@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
+import os
+import sys
 import docker
 import logging
-from os import path
+import json
 from time import sleep
-from sdntest.exception import PlatformException, WorkspaceException
+from docker.errors import ImageNotFound
+from sdntest.exception import PlatformException, WorkspaceException, REASON
 
 class TestSuite():
 
@@ -13,9 +16,11 @@ class TestSuite():
         self.logger = logging.getLogger("TestSuite")
         # container instance
         self.controller = None
-        self.mininet = None
+        # self.mininet = None
         # testcase options
         self.workspace = ""
+        self.outputdir = ""
+        self.outputcnt = 0
         self.repeat = 0
         self.platform = "odl"
         self.release_tag = ""
@@ -30,6 +35,17 @@ class TestSuite():
         self.default_onos_apps = "openflow"
         self.setup(configs)
 
+    def prepare_image(self, image):
+        """
+        Pull docker image from dockerhub.
+        """
+        for line in self.docker.api.pull(image, stream=True):
+            status_info = json.loads(line)
+            status = status_info['status']
+            progress = status_info.get('progress', '')
+            sys.stdout.write('\r\033[K%s %s' % (status, progress))
+        self.logger.info('Pulling image %s finished!', image)
+
     def bootstrap_odl(self, release_tag="4.4.0"):
         """
         Bootstrap a container for a specified OpenDaylight release distribution.
@@ -38,12 +54,22 @@ class TestSuite():
             release_tag (str): the release version of the distribution.
         """
         image_tag = "opendaylight/odl:" + release_tag
+
+        try:
+            self.docker.images.get(image_tag)
+        except ImageNotFound:
+            self.logger.info("Image %s not found. Try to pull the image from dockerhub...", image_tag)
+            self.prepare_image(image_tag)
+
+        self.logger.info("Starting container from image %s", image_tag)
         self.controller = self.docker.containers.run(image_tag,
                                                      command="/opt/opendaylight/bin/karaf",
                                                      tty=True,
                                                      detach=True)
+
         odl_features = self.apps if self.apps else self.default_odl_features
-        self.controller.exec_run('/opt/opendaylight/bin/client -u karaf "feature:install %s"' % self.apps)
+        self.logger.info("Installing the following features: %s", odl_features)
+        self.controller.exec_run('/opt/opendaylight/bin/client -u karaf "feature:install %s"' % odl_features)
 
     def bootstrap_onos(self, release_tag="latest"):
         """
@@ -54,6 +80,8 @@ class TestSuite():
         """
         image_tag = "onosproject/onos:" + release_tag
         onos_apps = self.apps if self.apps else self.default_onos_apps
+
+        self.logger.info("Starting container from image %s", image_tag)
         self.controller = self.docker.containers.run(image_tag,
                                                      tty=True,
                                                      detach=True,
@@ -64,7 +92,7 @@ class TestSuite():
         active_apps = '\n'.join(active_apps.split('\n')[1:])
         self.logger.info("Following apps have been installed:\n%s", active_apps)
 
-    def bootstrap_platfrom(self):
+    def bootstrap_platform(self):
         """
         Bootstrap a container for a given SDN controller platform.
         """
@@ -89,7 +117,14 @@ class TestSuite():
         to emulate network workflow.
         """
         controller_ip = self.controller.attrs['NetworkSettings']['IPAddress']
-        mininet_image = "ciena/mininet"
+        mininet_image = "ciena/mininet:latest"
+
+        try:
+            self.docker.images.get(mininet_image)
+        except ImageNotFound:
+            self.logger.info("Image %s not found. Try to pull the image from dockerhub...", mininet_image)
+            self.prepare_image(mininet_image)
+
         opts = {
             'cap_add': ['NET_ADMIN', 'SYS_MODULE'],
             'volumes': {
@@ -97,20 +132,28 @@ class TestSuite():
                     'bind': '/lib/modules',
                     'mode': 'rw'
                 },
-                self.testcase_path: {
-                    'bind': '/experiment',
+                self.workspace: {
+                    'bind': '/data',
                     'mode': 'rw'
                 }
             },
             'privileged': True,
+            'remove': True,
             'tty': True
         }
-        net_workflow_command = path.join('/experiment', self.net_workflow)
-        self.mininet = self.docker.containers.run(controller_ip,
-                                                  command=net_workflow_command,
-                                                  **opts)
+        net_workflow_command = os.path.join('/data', self.net_workflow)
+        workflow_output = self.docker.containers.run(controller_ip,
+                                                     command=net_workflow_command,
+                                                     **opts)
+        self.outputcnt += 1
+        outputfile = os.path.join(self.outputdir, 'output.%d.log' % self.outputcnt)
+        with open(outputfile, 'w') as f:
+            f.write(workflow_output)
 
     def kill_platform(self):
+        """
+        Stop and remove the platform container.
+        """
         self.controller.stop()
         self.controller.remove()
 
@@ -126,9 +169,16 @@ class TestSuite():
         else:
             self.logger.error('Missing workspace. You need to set a experiment workspace directory to run the testcase.')
             raise WorkspaceException()
-        if not path.isdir(self.workspace):
+        if not os.path.isdir(self.workspace):
             self.logger.error('Workspace %s is non-existed or not a directory', self.workspace)
             raise WorkspaceException(self.workspace)
+
+        self.outputdir = os.path.join(self.workspace, 'output')
+        if not os.path.exists(self.outputdir):
+            os.mkdir(self.outputdir)
+        if not os.path.isdir(self.outputdir):
+            self.logger.error("'output' has been existing, but not a directory.")
+            raise WorkspaceException(self.workspace, reason=REASON['OUTDIR'])
 
         if 'repeat' in configs.keys():
             self.repeat = configs['repeat']

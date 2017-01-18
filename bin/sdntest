@@ -119,7 +119,7 @@ if "__main__" == __name__:
         cleanup()
     except Exception:
         type_, val_, trace_ = sys.exc_info()
-        errorMsg = ("-"*80 + "\n" +
+        errorMsg = ("\n" + "-"*80 + "\n" +
                     "Caught exception. Exiting test...\n\n" +
                     "%s: %s\n" % (type_.__name__, val_) +
                     "-"*80 + "\n")

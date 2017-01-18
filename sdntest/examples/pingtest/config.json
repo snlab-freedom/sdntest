@@ -1,0 +1,8 @@
+{
+    "repeat": 5,
+    "platform": "odl",
+    "release": "5.1.0",
+    "apps": "odl-l2switch-switch",
+    "waiting": 15,
+    "workflow": "ping.py"
+}
