@@ -22,10 +22,6 @@ output = logging.StreamHandler(sys.stdout)
 output.setFormatter(formatter)
 logger.addHandler(output)
 
-def cleanup():
-    # TODO: no implementation currently
-    pass
-
 class TestRunner(object):
 
     def __init__(self):
@@ -34,10 +30,16 @@ class TestRunner(object):
         """
         self.options = None
         self.args = None
+        self.testcase = None
 
         self.parseArgs()
         self.setup()
         self.begin()
+
+    def cleanup(self):
+        # Cleanup the environment
+        if self.testcase:
+            self.testcase.kill_platform()
 
     def parseArgs(self):
         """
@@ -108,8 +110,8 @@ class TestRunner(object):
         configs['workspace'] = workspace
         logger.debug("Create test suite:")
         logger.debug("TestSuite(%s)", configs)
-        testcase = TestSuite(configs)
-        testcase.run()
+        self.testcase = TestSuite(configs)
+        self.testcase.run()
 
 if "__main__" == __name__:
     try:

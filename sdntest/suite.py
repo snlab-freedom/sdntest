@@ -116,6 +116,7 @@ class TestSuite():
         Bootstrap a container for mininet and execute a given script
         to emulate network workflow.
         """
+        self.controller.reload()
         controller_ip = self.controller.attrs['NetworkSettings']['IPAddress']
         mininet_image = "ciena/mininet:latest"
 
