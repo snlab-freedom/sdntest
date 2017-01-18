@@ -147,7 +147,8 @@ class TestSuite():
         """
         Repeatedly execute test case.
         """
-        for i in range(self.repeate):
+        self.logger.info("Starting execution...")
+        for i in range(self.repeat):
             self.logger.info("Bootstrapping SDN platform...")
             self.bootstrap_platform()
             self.logger.info("Bootstrapped SDN platform")
