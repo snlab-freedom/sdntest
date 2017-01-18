@@ -23,7 +23,7 @@ setup(name='sdntest',
           "Topic :: Utilities"
       ],
       license='MIT',
-      packages=['sdntest', 'sdntest.example'],
+      packages=['sdntest', 'sdntest.examples'],
       install_requires=[
           'setuptools',
           'docker'
