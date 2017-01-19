@@ -144,20 +144,27 @@ class TestSuite():
         }
         net_workflow_command = '%s %s' % (os.path.join('/data', self.net_workflow),
                                           controller_ip)
+        self.logger.info("Executing testcase by using workflow command: %s", net_workflow_command)
         workflow_output = self.docker.containers.run(mininet_image,
                                                      command=net_workflow_command,
                                                      **opts)
         self.outputcnt += 1
+        self.logger.info("Workflow finished: (%d/%d)", self.outputcnt, self.repeat)
         outputfile = os.path.join(self.outputdir, 'output.%d.log' % self.outputcnt)
         with open(outputfile, 'w') as f:
             f.write(workflow_output)
+            self.logger.info("Result saved in %s", outputfile)
 
     def kill_platform(self):
         """
         Stop and remove the platform container.
         """
+        self.logger.info("Stopping SDN platform container...")
         self.controller.stop()
+        self.logger.info("\u2714 Container %s is stopped!", self.controller.id)
+        self.logger.info("Removing SDN platform container...")
         self.controller.remove()
+        self.logger.info("\u2714 Container %s is removed!", self.controller.id)
 
     def setup(self, configs):
         """
@@ -201,10 +208,15 @@ class TestSuite():
         """
         self.logger.info("Starting execution...")
         for i in range(self.repeat):
+            self.logger.info("Repeat counter: %d", i+1)
             self.logger.info("Bootstrapping SDN platform...")
             self.bootstrap_platform()
-            self.logger.info("Bootstrapped SDN platform")
+            self.logger.info("\u2714 Bootstrapped SDN platform")
             self.logger.info("Waiting for mandatory components loaded...")
             sleep(self.waiting_time)
+            self.logger.info("Bootstrapping Mininet...")
             self.bootstrap_mininet()
+            self.logger.info("\u2714 Mininet test finished")
+            self.logger.info("Cleaning up SDN platform...")
             self.kill_platform()
+            self.logger.info("\u2714 Environment is clean")
