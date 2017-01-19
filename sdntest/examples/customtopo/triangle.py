@@ -29,30 +29,30 @@ class TriangleStarTopo( Topo ):
         switch = []
         host = []
 
-        for core in range(CORE_NUMBER):
-            core.append( self.addSwitch( 'core%d' % (core+1) ) )
+        for c in range(CORE_NUMBER):
+            core.append( self.addSwitch( 'core%d' % (c+1) ) )
             switch_count += 1
-        for core in range(CORE_NUMBER):
-            self.addLink( switch[core], switch[(core+1) % CORE_NUMBER] )
+        for c in range(CORE_NUMBER):
+            self.addLink( core[c], core[(c+1) % CORE_NUMBER] )
 
             switch.append([])
             host.append([])
-            for branch in range(m):
-                switch[core].append([])
-                for hop in range(n):
-                    switch[core][branch].append( self.addSwitch( 'core%db%ds%d' % (core, branch, hop) ) )
+            for b in range(m):
+                switch[c].append([])
+                for h in range(n):
+                    switch[c][b].append( self.addSwitch( 'core%db%ds%d' % (c+1, b+1, h+1) ) )
                     switch_count += 1
-                    if hop:
-                        self.addLink( switch[core][branch][hop-1],
-                                      switch[core][branch][hop] )
+                    if h:
+                        self.addLink( switch[c][b][h-1],
+                                      switch[c][b][h] )
                     else:
-                        self.addLink( switch[core][branch][hop],
-                                      core[core] )
-                host[core].append(self.addHost( 'core%dh%d' % (core, branch) ) )
+                        self.addLink( switch[c][b][h],
+                                      core[c] )
+                host[c].append(self.addHost( 'core%dh%d' % (c+1, b+1) ) )
                 host_count += 1
-                self.addLink( host[core][branch], switch[core][branch][hop] )
-        sys.stdout.write("***** total_switches=%u *****" % (switch_count))
-        sys.stdout.write("***** total_hosts=%u *****" % (host_count))
-        sys.stdout.write("***** total_nodes=%u *****" % (switch_count + host_count))
+                self.addLink( host[c][b], switch[c][b][h] )
+        sys.stdout.write("***** total_switches=%u *****\n" % (switch_count))
+        sys.stdout.write("***** total_hosts=%u *****\n" % (host_count))
+        sys.stdout.write("***** total_nodes=%u *****\n" % (switch_count + host_count))
 
 topos = { 'tristar': ( lambda m,n: TriangleStarTopo(m, n) ) }

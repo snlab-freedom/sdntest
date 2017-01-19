@@ -6,10 +6,11 @@ Test host-to-host intent and link failure recovery.
 
 import os
 import sys
+import json
 
 from mininet.net import Mininet
 from mininet.node import Node, RemoteController
-from .triangle import TriangleStarTopo
+from triangle import TriangleStarTopo
 from mininet.log import info, setLogLevel
 
 from select import poll, POLLIN
@@ -18,9 +19,9 @@ from threading import Thread
 
 class linkconfig(Thread):
     def __init__(self, net, src, dst, action, timeout):
-        Thread.__init__()
+        Thread.__init__(self)
         self.net = net
-        self.src = src,
+        self.src = src
         self.dst = dst
         self.action = action
         self.timeout = timeout
@@ -53,23 +54,28 @@ def h2hintent( controller, host1, host2 ):
 
     uuid = 'b9a13232-525e-4d8c-be21-cd65e3436034'
 
+    intent = json.dumps({
+        'intent:intent': uuid,
+        'intent:actions': [{'order': 2, 'allow': {}}],
+        'intent:subjects': [
+            {'order': 1, 'end-point-group': {'name': host1}},
+            {'order': 2, 'end-point-group': {'name': host2}}
+        ]
+    })
     cmd = ( 'curl -v -u admin:admin -X PUT '
             '-H "Content-type: application/json" '
-            'http://%s:8181/restconf/config/intent:intents/intent/%s' % (controller, uuid) +
-            '-d \'{"intent:intent":{'
-            ' "intent:id": %s,' % uuid +
-            ' "intent:actions": [{"order":2, "allow":{}}],'
-            ' "intent:subjects": ['
-            '  {"order":1,"end-point-group":{"name":%s}},' % host1 +
-            '  {"order":2,"end-point-group":{"name":%s}}],' % host2 +
-            '}}\'')
-    os.system( 'curl -v http://%s:8181/restconf/operation')
+            '-d \`%s\` ' % intent.strip() +
+            'http://%s:8181/restconf/config/intent:intents/intent/%s' % (controller, uuid) )
+
+    info( '*** Create intent: %s\n' % intent.strip() )
+
+    os.system( cmd )
 
 def test( controller, branch, hop, seconds):
     "Add host-to-host intent from controller and keep ping hosts."
 
     # Create network
-    topo = SingleSwitchTopo( branch, hop )
+    topo = TriangleStarTopo( branch, hop )
     net = Mininet( topo=topo,
                    controller=RemoteController,
                    build=False )
@@ -91,14 +97,14 @@ def test( controller, branch, hop, seconds):
         poller.register( fd, POLLIN )
 
     # Start ping
-    startpings( host1, [host2])
+    startpings( host1, [host2.name])
     endTime = time() + seconds
 
     # Emulate link failure
-    linkconfig(net, core1,name, core2.name, 'down', seconds/3.).start()
+    linkconfig(net, core1.name, core2.name, 'down', seconds/3.).start()
 
     # Recover link
-    linkconfig(net, core1,name, core2.name, 'up', 2*seconds/3.).start()
+    linkconfig(net, core1.name, core2.name, 'up', 2*seconds/3.).start()
 
     # Monitor output
     while time() < endTime:
@@ -108,7 +114,7 @@ def test( controller, branch, hop, seconds):
             info( '%s:' % node.name, node.monitor().strip(), '\n' )
 
     # Stop pings
-    for host in hosts:
+    for host in net.hosts:
         host.cmd( 'kill %while' )
 
     net.stop()
@@ -117,4 +123,4 @@ def test( controller, branch, hop, seconds):
 if __name__ == '__main__':
     setLogLevel( 'output' )
     assert len(sys.argv) == 2
-    multiping( sys.argv[1], branch=3, hop=4, seconds=10 )
+    test( sys.argv[1], branch=3, hop=4, seconds=10 )
