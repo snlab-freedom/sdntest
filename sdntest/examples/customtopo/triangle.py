@@ -5,61 +5,54 @@ s1---s2
 | /
 s3
 
-Consist of three fixed core switches, and each core switches will connect to m hosts through n switches. 
+Consist of three fixed core switches, and each core switches will connect to m hosts through n switches.
 
 """
 
+import sys
 from mininet.topo import Topo
-from optparse import OptionParser
 
-class MyTopo( Topo ):
+CORE_NUMBER = 3
+
+class TriangleStarTopo( Topo ):
     "Simple topology example."
 
-#    def __init__( self ):
     def build( self, m=1, n=1 ):
-        "Create custom topo."
+        """
+        m: number of branches in each core switch.
+        n: hop count between host and nearby core switche.
+        """
 
-        # Initialize topology
-        #Topo.__init__( self )
+        switch_count = 0
+        host_count = 0
+        core = []
+        switch = []
+        host = []
 
-        switch_index = 1
-        host_index = 1
-#        core = ['space']
-        switch = ['space']
-        host = ['space']
+        for core in range(CORE_NUMBER):
+            core.append( self.addSwitch( 'core%d' % (core+1) ) )
+            switch_count += 1
+        for core in range(CORE_NUMBER):
+            self.addLink( switch[core], switch[(core+1) % CORE_NUMBER] )
 
-#        parser = OptionParser()
-#        parser.add_option("-m", action="store", type="int", dest="m")
-#        parser.add_option("-n", action="store", type="int", dest="n")
-#        (options, args) = parser,parse_args()
-#        print options.m
-#        print options.n
-        #m = 2
-        #n = 2
-        CORE_NUMBER = 3
-
-        for i in range(1, CORE_NUMBER+1):
-            switch.append(self.addSwitch( 's'+str(switch_index) ))
-            switch_index = switch_index + 1
-        for k in range(1, CORE_NUMBER+1):
-            if (k==CORE_NUMBER):
-                self.addLink( switch[k], switch[1] )
-            else:
-                self.addLink( switch[k], switch[k+1] )
-            
-            for i in range(1,m+1):
-                for j in range(1,n+1):
-                    switch.append(self.addSwitch( 's'+str(switch_index) ))
-                    if (j==1):
-                        self.addLink( switch[k],switch[switch_index] )
+            switch.append([])
+            host.append([])
+            for branch in range(m):
+                switch[core].append([])
+                for hop in range(n):
+                    switch[core][branch].append( self.addSwitch( 'core%db%ds%d' % (core, branch, hop) ) )
+                    switch_count += 1
+                    if hop:
+                        self.addLink( switch[core][branch][hop-1],
+                                      switch[core][branch][hop] )
                     else:
-                        self.addLink( switch[switch_index-1],switch[switch_index])
-                    switch_index = switch_index + 1
-                host.append(self.addHost( 'h'+str(host_index)))
-                self.addLink( host[host_index], switch[switch_index-1])
-                host_index = host_index + 1
-        print "total_switches=%u"%(switch_index-1+3)
-        print "total_hosts=%u"%(host_index-1)
-        print "total_nodes=%u"%(switch_index-1+3+host_index-1)
+                        self.addLink( switch[core][branch][hop],
+                                      core[core] )
+                host[core].append(self.addHost( 'core%dh%d' % (core, branch) ) )
+                host_count += 1
+                self.addLink( host[core][branch], switch[core][branch][hop] )
+        sys.stdout.write("***** total_switches=%u *****" % (switch_count))
+        sys.stdout.write("***** total_hosts=%u *****" % (host_count))
+        sys.stdout.write("***** total_nodes=%u *****" % (switch_count + host_count))
 
-topos = { 'mytopo': ( lambda m,n:MyTopo(m, n) ) }
+topos = { 'tristar': ( lambda m,n: TriangleStarTopo(m, n) ) }

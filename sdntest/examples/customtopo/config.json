@@ -1,0 +1,8 @@
+{
+    "repeat": 5,
+    "platform": "odl",
+    "release": "4.4.0",
+    "apps": "odl-nic-core-mdsal odl-nic-renderer-vtn",
+    "waiting": 15,
+    "workflow": "main.py"
+}
