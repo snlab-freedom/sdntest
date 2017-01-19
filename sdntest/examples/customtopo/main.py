@@ -97,7 +97,7 @@ def test( controller, branch, hop, seconds):
         poller.register( fd, POLLIN )
 
     # Start ping
-    startpings( host1, [host2.name])
+    startpings( host1, [host2.IP()])
     endTime = time() + seconds
 
     # Emulate link failure
