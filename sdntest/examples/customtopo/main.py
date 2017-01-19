@@ -121,6 +121,6 @@ def test( controller, branch, hop, seconds):
 
 
 if __name__ == '__main__':
-    setLogLevel( 'output' )
+    setLogLevel( 'info' )
     assert len(sys.argv) == 2
     test( sys.argv[1], branch=3, hop=4, seconds=10 )
