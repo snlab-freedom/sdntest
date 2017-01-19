@@ -43,7 +43,8 @@ def multiping( controller, netsize, chunksize, seconds):
     # Create network and identify subnets
     topo = SingleSwitchTopo( netsize )
     net = Mininet( topo=topo,
-                   controller=RemoteController )
+                   controller=RemoteController,
+                   build=False )
     net.addController(ip=controller)
     net.start()
     hosts = net.hosts

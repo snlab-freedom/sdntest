@@ -32,10 +32,6 @@ class TestRunner(object):
         self.args = None
         self.testcase = None
 
-        self.parseArgs()
-        self.setup()
-        self.begin()
-
     def cleanup(self):
         # Cleanup the environment
         if self.testcase:
@@ -115,10 +111,13 @@ class TestRunner(object):
 
 if "__main__" == __name__:
     try:
-        TestRunner()
+        runner = TestRunner()
+        runner.parseArgs()
+        runner.setup()
+        runner.begin()
     except KeyboardInterrupt:
         logger.info("\n\nKeyboard Interrupt. Cleaning up and existing...\n\n")
-        cleanup()
+        runner.cleanup()
     except Exception:
         type_, val_, trace_ = sys.exc_info()
         errorMsg = ("\n" + "-"*80 + "\n" +
@@ -129,4 +128,4 @@ if "__main__" == __name__:
         import traceback
         stackTrace = traceback.format_exc()
         logger.debug(stackTrace + "\n")
-        cleanup()
+        runner.cleanup()

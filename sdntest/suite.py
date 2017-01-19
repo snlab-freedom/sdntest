@@ -66,6 +66,7 @@ class TestSuite():
                                                      command="/opt/opendaylight/bin/karaf",
                                                      tty=True,
                                                      detach=True)
+        sleep(5)
 
         odl_features = self.apps if self.apps else self.default_odl_features
         self.logger.info("Installing the following features: %s", odl_features)
