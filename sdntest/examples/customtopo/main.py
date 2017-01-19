@@ -11,7 +11,7 @@ import json
 from mininet.net import Mininet
 from mininet.node import Node, RemoteController
 from triangle import TriangleStarTopo
-from mininet.log import info, setLogLevel
+from mininet.log import info, output, setLogLevel
 
 from select import poll, POLLIN
 from time import time, sleep
@@ -36,15 +36,12 @@ def startpings( host, targetips ):
     targetips = ' '.join( targetips )
 
     # Simple ping loop
-    cmd = ( 'while true; do '
-            ' for ip in %s; do ' % targetips +
-            '  echo -n %s "->" $ip ' % host.IP() +
-            '   `ping -c1 -w 1 $ip` ;'
-            '  sleep 1;'
-            ' done; '
-            'done &' )
+    cmd = ( 'for ip in %s; do ' % targetips +
+            ' echo -n %s "->" $ip ' % host.IP() +
+            ' `ping -i 0.001 -w 1 $ip` ;'
+            'done &')
 
-    info( '*** Host %s (%s) will be pinging ips: %s\n' %
+    output( '*** Host %s (%s) will be pinging ips: %s\n' %
           ( host.name, host.IP(), targetips ) )
 
     host.cmd( cmd )
@@ -69,7 +66,7 @@ def h2hintent( controller, host1, host2 ):
             '-d \'%s\' ' % intent.strip() +
             'http://%s:8181/restconf/config/intent:intents/intent/%s' % (controller, uuid) )
 
-    info( '*** Create intent: %s\n' % intent.strip() )
+    output( '*** Create intent: %s\n' % intent.strip() )
 
     os.system( cmd )
 
@@ -113,7 +110,7 @@ def test( controller, branch, hop, seconds):
         readable = poller.poll(1000)
         for fd, _mask in readable:
             node = Node.outToNode[ fd ]
-            info( '%s:' % node.name, node.monitor().strip(), '\n' )
+            output( '%s:' % node.name, node.monitor().strip(), '\n' )
 
     # Stop pings
     for host in net.hosts:
@@ -123,6 +120,6 @@ def test( controller, branch, hop, seconds):
 
 
 if __name__ == '__main__':
-    setLogLevel( 'info' )
+    setLogLevel( 'output' )
     assert len(sys.argv) == 2
     test( sys.argv[1], branch=3, hop=4, seconds=10 )
