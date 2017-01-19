@@ -64,7 +64,7 @@ def h2hintent( controller, host1, host2 ):
     })
     cmd = ( 'curl -v -u admin:admin -X PUT '
             '-H "Content-type: application/json" '
-            '-d \`%s\` ' % intent.strip() +
+            '-d \'%s\' ' % intent.strip() +
             'http://%s:8181/restconf/config/intent:intents/intent/%s' % (controller, uuid) )
 
     info( '*** Create intent: %s\n' % intent.strip() )
