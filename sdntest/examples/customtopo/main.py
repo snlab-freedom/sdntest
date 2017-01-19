@@ -55,12 +55,14 @@ def h2hintent( controller, host1, host2 ):
     uuid = 'b9a13232-525e-4d8c-be21-cd65e3436034'
 
     intent = json.dumps({
-        'intent:intent': uuid,
-        'intent:actions': [{'order': 2, 'allow': {}}],
-        'intent:subjects': [
-            {'order': 1, 'end-point-group': {'name': host1}},
-            {'order': 2, 'end-point-group': {'name': host2}}
-        ]
+        'intent:intent': {
+            'intent:id': uuid,
+            'intent:actions': [{'order': 2, 'allow': {}}],
+            'intent:subjects': [
+                {'order': 1, 'end-point-group': {'name': host1}},
+                {'order': 2, 'end-point-group': {'name': host2}}
+            ]
+        }
     })
     cmd = ( 'curl -v -u admin:admin -X PUT '
             '-H "Content-type: application/json" '
