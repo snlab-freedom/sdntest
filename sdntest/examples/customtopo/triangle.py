@@ -10,7 +10,6 @@ Consist of three fixed core switches, and each core switches will connect to m h
 """
 
 from mininet.topo import Topo
-from mininet.log import info
 
 CORE_NUMBER = 3
 
@@ -23,36 +22,36 @@ class TriangleStarTopo( Topo ):
         n: hop count between host and nearby core switche.
         """
 
-        switch_count = 0
-        host_count = 0
+        self.hostNum = 0
+        self.switchNum = 0
         core = []
         switch = []
         host = []
 
         for c in range(CORE_NUMBER):
-            core.append( self.addSwitch( 'core%d' % (c+1) ) )
-            switch_count += 1
+            self.switchNum += 1
+            core.append( self.addSwitch( 's%d' % self.switchNum ) )
         for c in range(CORE_NUMBER):
             self.addLink( core[c], core[(c+1) % CORE_NUMBER] )
 
-            switch.append([])
-            host.append([])
+            switch.append( [] )
+            host.append( [] )
             for b in range(m):
-                switch[c].append([])
+                switch[c].append( [] )
                 for h in range(n):
-                    switch[c][b].append( self.addSwitch( 'core%db%ds%d' % (c+1, b+1, h+1) ) )
-                    switch_count += 1
-                    if h:
+                    self.switchNum += 1
+                    switch[c][b].append( self.addSwitch( 's%d' % self.switchNum ) )
+                    if h > 0:
                         self.addLink( switch[c][b][h-1],
                                       switch[c][b][h] )
                     else:
                         self.addLink( switch[c][b][h],
                                       core[c] )
-                host[c].append(self.addHost( 'core%dh%d' % (c+1, b+1) ) )
-                host_count += 1
-                self.addLink( host[c][b], switch[c][b][h] )
-        info("***** total_switches=%u *****\n" % (switch_count))
-        info("***** total_hosts=%u *****\n" % (host_count))
-        info("***** total_nodes=%u *****\n" % (switch_count + host_count))
+                self.hostNum += 1
+                host[c].append( self.addHost( 'h%d' % self.hostNum ) )
+                if n > 0:
+                    self.addLink( host[c][b], switch[c][b][h] )
+                else:
+                    self.addLink( host[c][b], core[c] )
 
-topos = { 'tristar': ( lambda m,n: TriangleStarTopo(m, n) ) }
+topos = { 'tristar': TriangleStarTopo }

@@ -84,10 +84,10 @@ def test( controller, branch, hop, seconds):
     net.addController( ip=controller )
     net.start()
 
-    host1 = net.get('core1h1')
-    host2 = net.get('core2h2')
-    core1 = net.get('core1')
-    core2 = net.get('core2')
+    host1 = net.get('h1')
+    host2 = net.get('h2')
+    core1 = net.get('s1')
+    core2 = net.get('s1')
 
     # Add host-to-host intent
     h2hintent( controller, host1.IP(), host2.IP() )
