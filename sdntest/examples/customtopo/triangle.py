@@ -9,8 +9,8 @@ Consist of three fixed core switches, and each core switches will connect to m h
 
 """
 
-import sys
 from mininet.topo import Topo
+from mininet.log import info
 
 CORE_NUMBER = 3
 
@@ -51,8 +51,8 @@ class TriangleStarTopo( Topo ):
                 host[c].append(self.addHost( 'core%dh%d' % (c+1, b+1) ) )
                 host_count += 1
                 self.addLink( host[c][b], switch[c][b][h] )
-        sys.stdout.write("***** total_switches=%u *****\n" % (switch_count))
-        sys.stdout.write("***** total_hosts=%u *****\n" % (host_count))
-        sys.stdout.write("***** total_nodes=%u *****\n" % (switch_count + host_count))
+        info("***** total_switches=%u *****\n" % (switch_count))
+        info("***** total_hosts=%u *****\n" % (host_count))
+        info("***** total_nodes=%u *****\n" % (switch_count + host_count))
 
 topos = { 'tristar': ( lambda m,n: TriangleStarTopo(m, n) ) }

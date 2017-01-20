@@ -15,6 +15,7 @@ from mininet.log import info, output, setLogLevel
 
 from select import poll, POLLIN
 from time import time, sleep
+from subprocess import Popen, PIPE
 from threading import Thread
 
 class linkconfig(Thread):
@@ -27,24 +28,26 @@ class linkconfig(Thread):
         self.timeout = timeout
 
     def run(self):
+        output( '*** Create a future task: config link between %s and %s %s after %.2f sec\n' % (self.src, self.dst, self.action, self.timeout) )
         sleep(self.timeout)
-        self.net.configLinkStatus(self.src, self.dst, self.action)
+        output( '*** Link (%s, %s) %s\n' % (self.src, self.dst, self.action.upper()) )
+        output( '***** DEBUG: \n')
+        output(self.src)
+        output( '***** DEBUG: \n')
+        output(self.dst)
+        output( '***** END of DEBUG \n')
+        self.net.configLinkStatus( self.src, self.dst, self.action )
 
-def startpings( host, targetips ):
+def startping( host, targetip, timeout ):
     "Tell host to repeatedly ping targets"
 
-    targetips = ' '.join( targetips )
-
     # Simple ping loop
-    cmd = ( 'for ip in %s; do ' % targetips +
-            ' echo -n %s "->" $ip ' % host.IP() +
-            ' `ping -i 0.001 -w 1 $ip` ;'
-            'done &')
+    cmd = ['ping', '-n', '-i0.001', '-w%d' % timeout, targetip]
 
     output( '*** Host %s (%s) will be pinging ips: %s\n' %
-          ( host.name, host.IP(), targetips ) )
+          ( host.name, host.IP(), targetip ) )
 
-    host.cmd( cmd )
+    return host.popen( cmd, stdout=PIPE, stderr=PIPE )
 
 def h2hintent( controller, host1, host2 ):
     "Add host-to-host intent."
@@ -89,32 +92,28 @@ def test( controller, branch, hop, seconds):
     # Add host-to-host intent
     h2hintent( controller, host1.IP(), host2.IP() )
 
-    # Create polling object
-    fds = [ host.stdout.fileno() for host in [host1, host2] ]
-    poller = poll()
-    for fd in fds:
-        poller.register( fd, POLLIN )
-
     # Start ping
-    startpings( host1, [host2.IP()])
-    endTime = time() + seconds
+    proc = startping( host1, host2.IP(), seconds)
 
+    timeout = seconds / 3.
     # Emulate link failure
-    linkconfig(net, core1.name, core2.name, 'down', seconds/3.).start()
+    # linkconfig( net, core1.name, core2.name, 'down', seconds/3. ).start()
+    output( '*** Create a future task: config link between %s and %s %s after %.2f sec\n' % (core1.name, core2.name, 'down', timeout) )
+    sleep( timeout )
+    net.configLinkStatus( core1.name, core2.name, 'down' )
 
     # Recover link
-    linkconfig(net, core1.name, core2.name, 'up', 2*seconds/3.).start()
+    # linkconfig( net, core1.name, core2.name, 'up', 2*seconds/3. ).start()
+    output( '*** Create a future task: config link between %s and %s %s after %.2f sec\n' % (core1.name, core2.name, 'up', timeout) )
+    sleep( timeout )
+    net.configLinkStatus( core1.name, core2.name, 'up' )
 
     # Monitor output
-    while time() < endTime:
-        readable = poller.poll(1000)
-        for fd, _mask in readable:
-            node = Node.outToNode[ fd ]
-            output( '%s:' % node.name, node.monitor().strip(), '\n' )
+    output( proc.stdout.read() )
+    output( proc.stderr.read() )
 
     # Stop pings
-    for host in net.hosts:
-        host.cmd( 'kill %while' )
+    proc.kill()
 
     net.stop()
 
