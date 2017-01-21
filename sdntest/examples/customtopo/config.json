@@ -1,5 +1,6 @@
 {
-    "repeat": 5,
+    "repeat": 20,
+    "parallel": 4,
     "platform": "odl",
     "release": "4.4.0",
     "apps": "odl-nic-core-mdsal odl-nic-renderer-vtn",

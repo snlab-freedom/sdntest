@@ -92,6 +92,7 @@ def test( controller, branch, hop, seconds):
     # Add host-to-host intent
     h2hintent( controller, host1.IP(), host2.IP() )
 
+    sleep( 3 )
     # Start ping
     proc = startping( host1, host2.IP(), seconds)
 

@@ -5,13 +5,20 @@ import sys
 import docker
 import logging
 import json
+if sys.version[0] == '2':
+    import Queue as queue
+else:
+    import queue
 from time import sleep
+from threading import Thread
 from docker.errors import ImageNotFound
 from sdntest.exception import PlatformException, WorkspaceException, REASON
 
-class TestSuite():
+class TestSuite(Thread):
 
     def __init__(self, configs):
+        Thread.__init__(self)
+        self.exc_pool = queue.Queue()
         self.docker = docker.from_env()
         self.logger = logging.getLogger("TestSuite")
         # container instance
@@ -27,6 +34,9 @@ class TestSuite():
         self.apps = ""
         self.waiting_time = 15
         self.net_workflow = None
+        # parallel options
+        self.parallel = 0
+        self.group = 0
         # default values
         self.default_odl_features = ' '.join([
             'odl-openflowplugin-southbound',
@@ -151,7 +161,10 @@ class TestSuite():
                                                      **opts)
         self.outputcnt += 1
         self.logger.info("Workflow finished: (%d/%d)", self.outputcnt, self.repeat)
-        outputfile = os.path.join(self.outputdir, 'output.%d.log' % self.outputcnt)
+        if self.parallel > 1:
+            outputfile = os.path.join(self.outputdir, 'output.%d.%d.log' % (self.group, self.outputcnt))
+        else:
+            outputfile = os.path.join(self.outputdir, 'output.%d.log' % self.outputcnt)
         with open(outputfile, 'w') as f:
             f.write(workflow_output)
             self.logger.info("Result saved in %s", outputfile)
@@ -203,21 +216,32 @@ class TestSuite():
         if 'workflow' in configs.keys():
             self.net_workflow = configs['workflow']
 
+        if 'parallel' in configs.keys():
+            self.parallel = configs['parallel']
+        if 'group' in configs.keys():
+            self.group = configs['group']
+
     def run(self):
         """
         Repeatedly execute test case.
         """
-        self.logger.info("Starting execution...")
-        for i in range(self.repeat):
-            self.logger.info("Repeat counter: %d", i+1)
-            self.logger.info("Bootstrapping SDN platform...")
-            self.bootstrap_platform()
-            self.logger.info("\u2714 Bootstrapped SDN platform")
-            self.logger.info("Waiting for mandatory components loaded...")
-            sleep(self.waiting_time)
-            self.logger.info("Bootstrapping Mininet...")
-            self.bootstrap_mininet()
-            self.logger.info("\u2714 Mininet test finished")
-            self.logger.info("Cleaning up SDN platform...")
-            self.kill_platform()
-            self.logger.info("\u2714 Environment is clean")
+        try:
+            self.logger.info("Starting execution...")
+            for i in range(self.repeat):
+                self.logger.info("Repeat counter: %d", i+1)
+                self.logger.info("Bootstrapping SDN platform...")
+                self.bootstrap_platform()
+                self.logger.info("\u2714 Bootstrapped SDN platform")
+                self.logger.info("Waiting for mandatory components loaded...")
+                sleep(self.waiting_time)
+                self.logger.info("Bootstrapping Mininet...")
+                self.bootstrap_mininet()
+                self.logger.info("\u2714 Mininet test finished")
+                self.logger.info("Cleaning up SDN platform...")
+                self.kill_platform()
+                self.logger.info("\u2714 Environment is clean")
+        except Exception:
+            self.exc_pool.put(sys.exc_info())
+            import traceback
+            stackTrace = traceback.format_exc()
+            self.logger.debug(stackTrace + "\n")

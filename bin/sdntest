@@ -4,7 +4,13 @@ import sys
 import os
 import json
 import logging
+if sys.version[0] == '2':
+    import Queue as queue
+else:
+    import queue
 from optparse import OptionParser
+from math import ceil
+from copy import deepcopy
 
 from sdntest.suite import TestSuite
 
@@ -31,10 +37,14 @@ class TestRunner(object):
         self.options = None
         self.args = None
         self.testcase = None
+        self.parallel = 0
 
     def cleanup(self):
         # Cleanup the environment
-        if self.testcase:
+        if type(self.testcase) == list:
+            for testcase in self.testcase:
+                testcase.kill_platform()
+        else:
             self.testcase.kill_platform()
 
     def parseArgs(self):
@@ -79,6 +89,46 @@ class TestRunner(object):
         logger.setLevel(LEVELS[self.options.verbosity])
         output.setLevel(LEVELS[self.options.verbosity])
 
+    def partition(self, configs):
+        """
+        Partition testcase for parallel execution.
+        """
+        self.testcase = []
+        total_repeat = configs.get('repeat', 0)
+        max_repeat = int(ceil(float(total_repeat) / self.parallel))
+        for group in range(self.parallel):
+            group_configs = deepcopy(configs)
+            group_configs['group'] = group + 1
+            repeat = min(max_repeat, total_repeat)
+            total_repeat -= repeat
+            group_configs['repeat'] = repeat
+            testcase = TestSuite(group_configs)
+            self.testcase.append(testcase)
+            testcase.start()
+
+    def getException(self):
+        """
+        Try to fetch exception from exc_pool of each testcase thread.
+
+        return: exception
+        """
+        if type(self.testcase) == list:
+            for testcase in self.testcase:
+                try:
+                    exc = testcase.exc_pool.get(block=False)
+                except queue.Empty:
+                    pass
+                else:
+                    return exc
+        else:
+            try:
+                exc = self.testcase.exc_pool.get(block=False)
+            except queue.Empty:
+                pass
+            else:
+                return exc
+        raise queue.Empty
+
     def begin(self):
         """
         Start the testcase.
@@ -104,10 +154,43 @@ class TestRunner(object):
         os.chdir(workspace)
         logging.basicConfig(filename='output.log')
         configs['workspace'] = workspace
-        logger.debug("Create test suite:")
-        logger.debug("TestSuite(%s)", configs)
-        self.testcase = TestSuite(configs)
-        self.testcase.run()
+
+        if 'parallel' in configs.keys():
+            self.parallel = configs['parallel']
+
+        if self.parallel > 1:
+            logger.debug("Parallel number: %d", self.parallel)
+            logger.debug("Partition for parallel")
+            self.partition(configs)
+        else:
+            logger.debug("Create test suite:")
+            logger.debug("TestSuite(%s)", configs)
+            self.testcase = TestSuite(configs)
+            self.testcase.start()
+
+        # TODO: wait for all testcases finish
+        while True:
+            try:
+                exc = self.getException()
+            except queue.Empty:
+                pass
+            else:
+                raise exc
+
+            if type(self.testcase) == list:
+                for testcase in self.testcase:
+                    testcase.join(0.1)
+                if sum([bool(tc.isAlive()) for tc in self.testcase]):
+                    continue
+                else:
+                    break
+            else:
+                self.testcase.join(0.1)
+                if self.testcase.isAlive():
+                    continue
+                else:
+                    break
+
 
 if "__main__" == __name__:
     try:
