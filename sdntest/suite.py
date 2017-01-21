@@ -13,6 +13,7 @@ from time import sleep
 from threading import Thread
 from docker.errors import ImageNotFound
 from sdntest.exception import PlatformException, WorkspaceException, REASON
+from sdntest.utils import green
 
 class TestSuite(Thread):
 
@@ -175,10 +176,10 @@ class TestSuite(Thread):
         """
         self.logger.info("Stopping SDN platform container...")
         self.controller.stop()
-        self.logger.info("\u2714 Container %s is stopped!", self.controller.id)
+        self.logger.info(green(u"\u2714") + " Container %s is stopped!", self.controller.id)
         self.logger.info("Removing SDN platform container...")
         self.controller.remove()
-        self.logger.info("\u2714 Container %s is removed!", self.controller.id)
+        self.logger.info(green(u"\u2714") + " Container %s is removed!", self.controller.id)
 
     def setup(self, configs):
         """
@@ -231,15 +232,15 @@ class TestSuite(Thread):
                 self.logger.info("Repeat counter: %d", i+1)
                 self.logger.info("Bootstrapping SDN platform...")
                 self.bootstrap_platform()
-                self.logger.info("\u2714 Bootstrapped SDN platform")
+                self.logger.info(green(u"\u2714") + " Bootstrapped SDN platform")
                 self.logger.info("Waiting for mandatory components loaded...")
                 sleep(self.waiting_time)
                 self.logger.info("Bootstrapping Mininet...")
                 self.bootstrap_mininet()
-                self.logger.info("\u2714 Mininet test finished")
+                self.logger.info(green(u"\u2714") + " Mininet test finished")
                 self.logger.info("Cleaning up SDN platform...")
                 self.kill_platform()
-                self.logger.info("\u2714 Environment is clean")
+                self.logger.info(green(u"\u2714") + " Environment is clean")
         except Exception:
             self.exc_pool.put(sys.exc_info())
             import traceback
