@@ -1,0 +1,7 @@
+{
+  "type": "HostToHostIntent",
+  "id": "0x0",
+  "appId": "org.onosproject.cli",
+  "one": "$1/-1",
+  "two": "$2/-1"
+}
