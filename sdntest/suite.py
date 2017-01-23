@@ -35,6 +35,7 @@ class TestSuite(Thread):
         self.apps = ""
         self.waiting_time = 15
         self.net_workflow = None
+        self.arguments = ""
         # parallel options
         self.parallel = 0
         self.group = 0
@@ -43,7 +44,7 @@ class TestSuite(Thread):
             'odl-openflowplugin-southbound',
             'odl-openflowplugin-flow-services'
         ])
-        self.default_onos_apps = "openflow"
+        self.default_onos_apps = "openflow,proxyarp"
         self.setup(configs)
 
     def prepare_image(self, image):
@@ -101,7 +102,7 @@ class TestSuite(Thread):
                                                          'ONOS_APPS': onos_apps
                                                      })
         raw_active_apps = self.controller.exec_run('client "apps -a -s"')
-        active_apps = '\n'.join(active_apps.split('\n')[1:])
+        active_apps = '\n'.join(raw_active_apps.split('\n')[1:])
         self.logger.info("Following apps have been installed:\n%s", active_apps)
 
     def bootstrap_platform(self):
@@ -155,7 +156,7 @@ class TestSuite(Thread):
             'tty': True
         }
         net_workflow_command = '%s %s' % (os.path.join('/data', self.net_workflow),
-                                          controller_ip)
+                                          controller_ip + ' ' + self.arguments)
         self.logger.info("Executing testcase by using workflow command: %s", net_workflow_command)
         workflow_output = self.docker.containers.run(mininet_image,
                                                      command=net_workflow_command,
@@ -216,6 +217,8 @@ class TestSuite(Thread):
             self.waiting_time = configs['waiting']
         if 'workflow' in configs.keys():
             self.net_workflow = configs['workflow']
+        if 'arguments' in configs.keys():
+            self.arguments = configs['arguments']
 
         if 'parallel' in configs.keys():
             self.parallel = configs['parallel']
