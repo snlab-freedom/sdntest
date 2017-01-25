@@ -1,9 +1,21 @@
 {
-    "repeat": 20,
-    "parallel": 4,
-    "platform": "odl",
-    "release": "4.4.0",
-    "apps": "odl-nic-core-mdsal odl-nic-renderer-vtn",
+    "repeat": 10,
+    "parallel": 2,
+    "platform": "onos",
+    "release": "",
+    "apps": "",
     "waiting": 15,
-    "workflow": "main.py"
+    "workflow": "main.py",
+    "arguments": [
+      "4 4 10 3 iperf onos 100",
+      "4 4 10 3 iperf onos 200",
+      "4 4 10 3 iperf onos 300",
+      "4 4 10 3 iperf onos 400",
+      "4 4 10 3 iperf onos 500",
+      "4 4 10 3 iperf onos 600",
+      "4 4 10 3 iperf onos 700",
+      "4 4 10 3 iperf onos 800",
+      "4 4 10 3 iperf onos 900",
+      "4 4 10 3 iperf onos 1000"
+    ]
 }

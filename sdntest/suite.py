@@ -13,7 +13,7 @@ from time import sleep
 from threading import Thread
 from docker.errors import ImageNotFound
 from sdntest.exception import PlatformException, WorkspaceException, REASON
-from sdntest.utils import green
+from sdntest.utils import green, cyan
 
 class TestSuite(Thread):
 
@@ -36,6 +36,8 @@ class TestSuite(Thread):
         self.waiting_time = 15
         self.net_workflow = None
         self.arguments = ""
+        self.arglist = False
+        self.argcnt = 0
         # parallel options
         self.parallel = 0
         self.group = 0
@@ -164,9 +166,17 @@ class TestSuite(Thread):
         self.outputcnt += 1
         self.logger.info("Workflow finished: (%d/%d)", self.outputcnt, self.repeat)
         if self.parallel > 1:
-            outputfile = os.path.join(self.outputdir, 'output.%d.%d.log' % (self.group, self.outputcnt))
+            if self.arglist:
+                outputfile = 'output.%d.%d-%d.log' % (self.group, self.argcnt, self.outputcnt)
+            else:
+                outputfile = 'output.%d.%d.log' % (self.group, self.outputcnt)
         else:
-            outputfile = os.path.join(self.outputdir, 'output.%d.log' % self.outputcnt)
+            if self.arglist:
+                outputfile = 'output.%d-%d.log' % (self.argcnt, self.outputcnt)
+            else:
+                outputfile = 'output.%d.log' % self.outputcnt
+
+        outputfile = os.path.join(self.outputdir, outputfile)
         with open(outputfile, 'w') as f:
             f.write(workflow_output)
             self.logger.info("Result saved in %s", outputfile)
@@ -231,19 +241,31 @@ class TestSuite(Thread):
         """
         try:
             self.logger.info("Starting execution...")
-            for i in range(self.repeat):
-                self.logger.info("Repeat counter: %d", i+1)
-                self.logger.info("Bootstrapping SDN platform...")
-                self.bootstrap_platform()
-                self.logger.info(green(u"\u2714") + " Bootstrapped SDN platform")
-                self.logger.info("Waiting for mandatory components loaded...")
-                sleep(self.waiting_time)
-                self.logger.info("Bootstrapping Mininet...")
-                self.bootstrap_mininet()
-                self.logger.info(green(u"\u2714") + " Mininet test finished")
-                self.logger.info("Cleaning up SDN platform...")
-                self.kill_platform()
-                self.logger.info(green(u"\u2714") + " Environment is clean")
+
+            if type(self.arguments) == list:
+                argumentsList = self.arguments
+                self.arglist = True
+            else:
+                argumentsList = [ self.arguments ]
+
+            for arguments in argumentsList:
+                self.arguments = arguments
+                self.argcnt += 1
+                self.logger.info(cyan(">>> Arguments: %s"), self.arguments)
+                self.outputcnt = 0
+                for i in range(self.repeat):
+                    self.logger.info("Repeat counter: %d", i+1)
+                    self.logger.info("Bootstrapping SDN platform...")
+                    self.bootstrap_platform()
+                    self.logger.info(green(u"\u2714") + " Bootstrapped SDN platform")
+                    self.logger.info("Waiting for mandatory components loaded...")
+                    sleep(self.waiting_time)
+                    self.logger.info("Bootstrapping Mininet...")
+                    self.bootstrap_mininet()
+                    self.logger.info(green(u"\u2714") + " Mininet test finished")
+                    self.logger.info("Cleaning up SDN platform...")
+                    self.kill_platform()
+                    self.logger.info(green(u"\u2714") + " Environment is clean")
         except Exception:
             self.exc_pool.put(sys.exc_info())
             import traceback
